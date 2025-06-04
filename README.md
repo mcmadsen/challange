@@ -101,6 +101,29 @@ The application follows a modular architecture:
 - **Rate Limiting**: Respects the transaction API rate limit (5 requests per minute)
 - **Aggregation**: Efficiently aggregates data using MongoDB aggregation pipeline
 
+## Future Improvements
+
+If I had more time, I would implement the following improvements:
+
+### Bull Queue for Transaction Synchronization
+
+I would replace the current cron-based synchronization with Bull, a Redis-based queue for Node.js, to improve the robustness and scalability of the transaction synchronization process:
+
+- **Reliable Job Processing**: Bull provides persistent job storage in Redis, ensuring no jobs are lost even if the service crashes
+- **Automatic Retries**: Configure automatic retries with exponential backoff for failed API requests
+- **Concurrency Control**: Fine-grained control over job concurrency to optimize performance while respecting API rate limits
+- **Distributed Processing**: Enable horizontal scaling by distributing jobs across multiple worker instances
+- **Monitoring and Visibility**: Built-in monitoring and UI for tracking job status, failures, and performance metrics
+- **Event-Based Architecture**: Move from polling to an event-driven approach for more efficient resource usage
+- **Prioritization**: Implement job prioritization for critical synchronization tasks
+
+Implementation would involve:
+1. Adding Redis and Bull as dependencies
+2. Creating a dedicated queue for transaction synchronization
+3. Converting the current sync logic to Bull job processors
+4. Implementing proper error handling and retry strategies
+5. Setting up monitoring for queue health and performance
+
 
 ## Testing Approach
 
