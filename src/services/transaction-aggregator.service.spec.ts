@@ -165,7 +165,7 @@ describe("TransactionAggregatorService", () => {
       };
 
       // Spy on the getTransactions method and return our mock response
-      jest
+      let spy = jest
         .spyOn(mockTransactionApiService, "getTransactions")
         .mockResolvedValue(mockResponse);
 
@@ -194,9 +194,10 @@ describe("TransactionAggregatorService", () => {
         amount: 25,
       });
 
+      spy.mockClear();
       // Verify lastSyncTime was updated (it's a private property, so we need to check indirectly)
       // Call syncTransactions again with no new transactions
-      const spy = jest
+      spy = jest
         .spyOn(mockTransactionApiService, "getTransactions")
         .mockResolvedValue({
           items: [],
@@ -208,12 +209,76 @@ describe("TransactionAggregatorService", () => {
             currentPage: 1,
           },
         });
-
       await service.syncTransactionsJob();
 
       const calls = spy.mock.calls;
-      expect(calls.length).toBe(2);
-      expect(calls[0][0]).not.toBe(calls[1][0]); // startDate should be different
+      expect(calls.length).toBe(1);
+      expect(calls[0][0]).not.toBe(mockResponse); // startDate should be different
+    });
+
+    it("should handle pagination when there are more than 1000 transactions", async () => {
+      // Create mock transactions for multiple pages
+      const page1Transactions = Array(1000)
+        .fill(null)
+        .map((_, i) => ({
+          id: `tx-page1-${i}`,
+          userId: "074095",
+          createdAt: "2023-04-01T10:00:00.000Z",
+          type: TransactionType.EARNED,
+          amount: 10,
+        }));
+
+      const page2Transactions = Array(500)
+        .fill(null)
+        .map((_, i) => ({
+          id: `tx-page2-${i}`,
+          userId: "074095",
+          createdAt: "2023-04-01T11:00:00.000Z",
+          type: TransactionType.SPENT,
+          amount: 5,
+        }));
+
+      // Mock API responses for pagination
+      const mockGetTransactions = jest.spyOn(
+        mockTransactionApiService,
+        "getTransactions",
+      );
+
+      // First page response
+      mockGetTransactions.mockResolvedValueOnce({
+        items: page1Transactions,
+        meta: {
+          totalItems: 1500,
+          itemCount: 1000,
+          itemsPerPage: 1000,
+          totalPages: 2,
+          currentPage: 1,
+        },
+      });
+
+      // Second page response
+      mockGetTransactions.mockResolvedValueOnce({
+        items: page2Transactions,
+        meta: {
+          totalItems: 1500,
+          itemCount: 500,
+          itemsPerPage: 1000,
+          totalPages: 2,
+          currentPage: 2,
+        },
+      });
+
+      // Wait for the sync to complete
+      await service.syncTransactionsJob();
+
+      // Verify API was called twice with correct pagination parameters
+      expect(mockGetTransactions).toHaveBeenCalledTimes(2);
+      expect(mockGetTransactions.mock.calls[0][2]).toBe(1); // page 1
+      expect(mockGetTransactions.mock.calls[1][2]).toBe(2); // page 2
+
+      // Verify all transactions were saved
+      const savedTransactions = await transactionModel.find().lean();
+      expect(savedTransactions).toHaveLength(1500);
     });
 
     it("should handle duplicate transactions gracefully", async () => {
