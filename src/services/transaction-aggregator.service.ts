@@ -39,39 +39,89 @@ export class TransactionAggregatorService {
 
       this.logger.log(`Syncing transactions from ${startDate} to ${endDate}`);
 
-      // Get transactions from the API
-      const response = await this.mockTransactionApiService.getTransactions(
-        startDate,
-        endDate,
-      );
+      let page = 1;
+      let hasMorePages = true;
+      let totalSynced = 0;
+      let requestCount = 0;
+      const MAX_REQUESTS_PER_MINUTE = 5;
+      const PAGE_LIMIT = 1000; // API limit per request
 
-      // Process and save transactions
-      if (response.items.length > 0) {
-        const transactions = response.items.map((item) => ({
-          transactionId: item.id,
-          userId: item.userId,
-          createdAt: new Date(item.createdAt),
-          type: item.type,
-          amount: item.amount,
-        }));
+      // Track the time we started making requests
+      const requestStartTime = Date.now();
 
-        // Use bulkWrite for better performance
-        await this.transactionModel
-          .insertMany(transactions, { ordered: false })
-          .catch((error: { code?: number }) => {
-            // Handle duplicate key errors (already synced transactions)
-            if (error.code !== 11000) {
-              throw error;
-            }
-            this.logger.warn(
-              "Some transactions were already synced and skipped",
+      while (hasMorePages) {
+        // Check if we've hit the rate limit
+        if (requestCount >= MAX_REQUESTS_PER_MINUTE) {
+          // Calculate how long to wait before making more requests
+          const elapsedMs = Date.now() - requestStartTime;
+          const waitTimeMs = Math.max(60000 - elapsedMs, 0);
+
+          if (waitTimeMs > 0) {
+            this.logger.log(
+              `Rate limit reached. Waiting ${waitTimeMs / 1000} seconds before continuing...`,
             );
-          });
+            await new Promise((resolve) => setTimeout(resolve, waitTimeMs));
+          }
 
-        this.logger.log(`Synced ${transactions.length} transactions`);
-      } else {
-        this.logger.log("No new transactions to sync");
+          // Reset counters
+          requestCount = 0;
+        }
+
+        // Get transactions from the API with pagination
+        const response = await this.mockTransactionApiService.getTransactions(
+          startDate,
+          endDate,
+          page,
+          PAGE_LIMIT,
+        );
+
+        requestCount++;
+
+        // Process and save transactions
+        if (response.items.length > 0) {
+          const transactions = response.items.map((item) => ({
+            transactionId: item.id,
+            userId: item.userId,
+            createdAt: new Date(item.createdAt),
+            type: item.type,
+            amount: item.amount,
+          }));
+
+          // Use bulkWrite for better performance
+          await this.transactionModel
+            .insertMany(transactions, { ordered: false })
+            .catch((error: { code?: number }) => {
+              // Handle duplicate key errors (already synced transactions)
+              if (error.code !== 11000) {
+                throw error;
+              }
+              this.logger.warn(
+                "Some transactions were already synced and skipped",
+              );
+            });
+
+          totalSynced += transactions.length;
+          this.logger.log(
+            `Synced ${transactions.length} transactions (page ${page})`,
+          );
+        } else {
+          this.logger.log(`No transactions found on page ${page}`);
+        }
+
+        // Check if we need to fetch more pages
+        if (
+          response.items.length < PAGE_LIMIT ||
+          page >= response.meta.totalPages
+        ) {
+          hasMorePages = false;
+        } else {
+          page++;
+        }
       }
+
+      this.logger.log(
+        `Sync completed. Total transactions synced: ${totalSynced}`,
+      );
 
       // Update last sync time
       this.lastSyncTime = now;
