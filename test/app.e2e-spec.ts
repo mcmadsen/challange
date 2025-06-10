@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
-import { DatabaseConfig } from "../src/modules/core/config/database.config";
 import { ApiIntegrationModule } from "../src/modules/api-integration/api-integration.module";
 import { CoreModule } from "../src/modules/core/core.module";
 import { SyncModule } from "../src/modules/sync/sync.module";
