@@ -10,6 +10,7 @@ This is a data aggregation microservice that collects transactions from a transa
   - Getting aggregated data by user ID (balance, earned, spent, payout, paid out)
   - Getting a list of requested payouts (user ID, payout amount)
 - Uses MongoDB in-memory database for data storage
+- Uses Redis in-memory server for Bull queue
 
 ## Installation
 
@@ -89,71 +90,49 @@ npm run test:cov
 
 The application follows a modular architecture:
 
-- **Controllers**: Handle HTTP requests and responses
-- **Services**: Contain business logic
-- **Models**: Define data structures
-- **Schemas**: Define database schemas
+- **Core Module**: Shared functionality across the application
+  - Database configuration (MongoDB in-memory)
+  - Redis configuration (Redis in-memory)
+  - Global providers and configurations
+
+- **Transaction Module**: Encapsulate all transaction-related components
+  - Controllers for transaction endpoints
+  - Services for transaction aggregation
+  - Schemas and models for transaction data
+
+- **API Integration Module**: Separate external API interactions
+  - Mock transaction API service
+  - API client configurations
+
+- **Sync Module**: Dedicated to synchronization processes
+  - Bull queue implementation for transaction synchronization
+  - Sync processors and services
+  - Scheduled jobs for periodic synchronization
 
 ## Design Decisions
 
 - **In-Memory MongoDB**: Used for simplicity and ease of testing
-- **Periodic Sync**: Ensures data is up-to-date with less than 2 minutes delay
+- **In-Memory Redis**: Used for Bull queue without requiring external Redis installation
+- **Bull Queue for Transaction Synchronization**: Provides reliable job processing with automatic retries
+- **Modular Architecture**: Better separation of concerns and improved maintainability
 - **Rate Limiting**: Respects the transaction API rate limit (5 requests per minute)
 - **Aggregation**: Efficiently aggregates data using MongoDB aggregation pipeline
 
-## Future Improvements
+## Bull Queue Implementation
 
-If I had more time, I would implement the following improvements:
-
-### Bull Queue for Transaction Synchronization
-
-I would replace the current cron-based synchronization with Bull, a Redis-based queue for Node.js, to improve the robustness and scalability of the transaction synchronization process:
+The application uses Bull, a Redis-based queue for Node.js, to improve the robustness and scalability of the transaction synchronization process:
 
 - **Reliable Job Processing**: Bull provides persistent job storage in Redis, ensuring no jobs are lost even if the service crashes
-- **Automatic Retries**: Configure automatic retries with exponential backoff for failed API requests
+- **Automatic Retries**: Configured automatic retries with exponential backoff for failed API requests
 - **Concurrency Control**: Fine-grained control over job concurrency to optimize performance while respecting API rate limits
-- **Distributed Processing**: Enable horizontal scaling by distributing jobs across multiple worker instances
-- **Monitoring and Visibility**: Built-in monitoring and UI for tracking job status, failures, and performance metrics
-- **Event-Based Architecture**: Move from polling to an event-driven approach for more efficient resource usage
-- **Prioritization**: Implement job prioritization for critical synchronization tasks
+- **Event-Based Architecture**: Moved from polling to an event-driven approach for more efficient resource usage
+- **Prioritization**: Implemented job prioritization for critical synchronization tasks
 
-Implementation would involve:
-1. Adding Redis and Bull as dependencies
-2. Creating a dedicated queue for transaction synchronization
-3. Converting the current sync logic to Bull job processors
-4. Implementing proper error handling and retry strategies
-5. Setting up monitoring for queue health and performance
-
-### Modular Architecture Improvements
-
-The current application structure could be enhanced with a more modular approach using NestJS feature modules:
-
-- **Transaction Module**: Encapsulate all transaction-related components
-  - Controllers, services, schemas, and models related to transactions
-  - Internal providers that should not be exposed outside the module
-
-- **API Integration Module**: Separate external API interactions
-  - Mock transaction API service
-  - Rate limiting logic
-  - API client configurations
-
-- **Core Module**: Shared functionality across the application
-  - Database configuration
-  - Common utilities and helpers
-  - Shared interfaces and types
-
-- **Sync Module**: Dedicated to synchronization processes
-  - Bull queue implementation
-  - Sync strategies and processors
-  - Monitoring and reporting
-
-Benefits of this modular approach:
-- Better separation of concerns
-- Improved code organization and maintainability
-- Easier testing with clear boundaries
-- More scalable architecture for future feature additions
-- Potential for lazy-loading modules in larger applications
-
+The implementation includes:
+1. A dedicated queue for transaction synchronization
+2. A processor that handles the actual synchronization logic
+3. A service that schedules synchronization jobs
+4. Proper error handling and retry strategies
 
 ## Testing Approach
 
@@ -242,6 +221,7 @@ Reliability tests focus on ensuring the service is robust:
 - **Jest**: Primary testing framework
 - **Supertest**: HTTP testing
 - **MongoDB Memory Server**: In-memory MongoDB for testing
+- **Redis Memory Server**: In-memory Redis for testing Bull queues
 
 ### Test Organization
 

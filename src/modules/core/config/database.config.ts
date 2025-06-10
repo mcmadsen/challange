@@ -13,7 +13,7 @@ export class DatabaseConfig {
 
     const uri = this.mongoMemoryServer.getUri();
     // Log the uri for debugging purpose
-    DatabaseConfig.logger.log(`MongoDB URI: ${uri}`);
+    DatabaseConfig.logger.debug(`MongoDB URI: ${uri}`);
     return {
       uri,
     };

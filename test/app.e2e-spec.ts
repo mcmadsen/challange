@@ -1,9 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
-import { AppModule } from "../src/app.module";
-import { MongooseModule } from "@nestjs/mongoose";
-import { DatabaseConfig } from "../src/config/database.config";
+import { DatabaseConfig } from "../src/modules/core/config/database.config";
+import { ApiIntegrationModule } from "../src/modules/api-integration/api-integration.module";
+import { CoreModule } from "../src/modules/core/core.module";
+import { SyncModule } from "../src/modules/sync/sync.module";
+import { TransactionModule } from "../src/modules/transaction/transaction.module";
 
 describe("TransactionController (e2e)", () => {
   let app: INestApplication;
@@ -12,12 +14,10 @@ describe("TransactionController (e2e)", () => {
   beforeAll(async () => {
     moduleFixture = await Test.createTestingModule({
       imports: [
-        MongooseModule.forRootAsync({
-          useFactory: async () => {
-            return await DatabaseConfig.getMongooseOptions();
-          },
-        }),
-        AppModule,
+        CoreModule,
+        TransactionModule,
+        ApiIntegrationModule,
+        SyncModule,
       ],
     }).compile();
 
@@ -27,8 +27,6 @@ describe("TransactionController (e2e)", () => {
 
   afterAll(async () => {
     await app.close();
-    await DatabaseConfig.closeConnection();
-    await moduleFixture.close();
   });
 
   it("/transactions/aggregated/:userId (GET)", () => {

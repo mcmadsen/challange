@@ -1,29 +1,10 @@
-import { Module, OnApplicationShutdown } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
-import { ScheduleModule } from "@nestjs/schedule";
-import { TransactionController } from "./controllers/transaction.controller";
-import { Transaction, TransactionSchema } from "./schemas/transaction.schema";
-import { MockTransactionApiService } from "./services/mock-transaction-api.service";
-import { TransactionAggregatorService } from "./services/transaction-aggregator.service";
-import { DatabaseConfig } from "./config/database.config";
+import { Module } from "@nestjs/common";
+import { CoreModule } from "./modules/core/core.module";
+import { TransactionModule } from "./modules/transaction/transaction.module";
+import { ApiIntegrationModule } from "./modules/api-integration/api-integration.module";
+import { SyncModule } from "./modules/sync/sync.module";
 
 @Module({
-  imports: [
-    ScheduleModule.forRoot(),
-    MongooseModule.forRootAsync({
-      useFactory: async () => {
-        return await DatabaseConfig.getMongooseOptions();
-      },
-    }),
-    MongooseModule.forFeature([
-      { name: Transaction.name, schema: TransactionSchema },
-    ]),
-  ],
-  controllers: [TransactionController],
-  providers: [MockTransactionApiService, TransactionAggregatorService],
+  imports: [CoreModule, TransactionModule, ApiIntegrationModule, SyncModule],
 })
-export class AppModule implements OnApplicationShutdown {
-  async onApplicationShutdown() {
-    await DatabaseConfig.closeConnection();
-  }
-}
+export class AppModule {}
