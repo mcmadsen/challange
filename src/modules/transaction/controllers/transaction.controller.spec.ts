@@ -50,7 +50,7 @@ describe("TransactionController", () => {
           return expectedResult;
         });
 
-      const result = await controller.getAggregatedData(userId);
+      const result = await controller.getAggregatedDataByUserId(userId);
       expect(result).toBe(expectedResult);
       expect(getAggregatedDataSpy).toHaveBeenCalledWith(userId);
     });

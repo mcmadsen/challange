@@ -20,6 +20,11 @@ export interface TransactionResponse {
     itemsPerPage: number;
     totalPages: number;
     currentPage: number;
+    rateLimit?: {
+      limit: number;
+      remaining: number;
+      resetInSeconds: number;
+    };
   };
 }
 

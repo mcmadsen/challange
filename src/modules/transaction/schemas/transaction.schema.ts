@@ -4,19 +4,19 @@ import { TransactionType } from "../models/transaction.model";
 
 export type TransactionDocument = Transaction & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Transaction {
   @Prop({ required: true, unique: true })
   transactionId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   userId: string;
 
   @Prop({ required: true })
   createdAt: Date;
 
   @Prop({ required: true, enum: TransactionType })
-  type: TransactionType;
+  type: string;
 
   @Prop({ required: true })
   amount: number;

@@ -9,7 +9,7 @@ export class TransactionController {
   ) {}
 
   @Get("aggregated/:userId")
-  async getAggregatedData(
+  async getAggregatedDataByUserId(
     @Param("userId") userId: string,
   ): Promise<AggregatedData> {
     return this.transactionAggregatorService.getAggregatedDataByUserId(userId);

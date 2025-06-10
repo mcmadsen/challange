@@ -1,12 +1,28 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { MockTransactionApiService } from "./mock-transaction-api.service";
+import { RedisService } from "../../core/services/redis.service";
 
 describe("MockTransactionApiService", () => {
   let service: MockTransactionApiService;
+  let redisServiceMock: Partial<RedisService>;
 
   beforeEach(async () => {
+    // Create a mock for RedisService
+    redisServiceMock = {
+      checkRateLimit: jest.fn().mockResolvedValue({
+        allowed: true,
+        remaining: 4,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MockTransactionApiService],
+      providers: [
+        MockTransactionApiService,
+        {
+          provide: RedisService,
+          useValue: redisServiceMock,
+        },
+      ],
     }).compile();
 
     service = module.get<MockTransactionApiService>(MockTransactionApiService);
@@ -19,7 +35,7 @@ describe("MockTransactionApiService", () => {
   describe("getTransactions", () => {
     it("should return transactions within date range", async () => {
       const startDate = "2023-03-14T00:00:00.000Z";
-      const endDate = "2023-03-16T23:59:59.999Z";
+      const endDate = "2026-03-16T23:59:59.999Z";
 
       const result = await service.getTransactions(startDate, endDate);
 
@@ -34,7 +50,7 @@ describe("MockTransactionApiService", () => {
 
     it("should handle pagination correctly", async () => {
       const startDate = "2023-03-01T00:00:00.000Z";
-      const endDate = "2023-03-31T23:59:59.999Z";
+      const endDate = "2026-03-31T23:59:59.999Z";
       const page = 1;
       const limit = 2;
 
